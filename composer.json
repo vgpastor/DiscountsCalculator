@@ -1,6 +1,7 @@
 {
     "name": "vgpastor/discounts-calculator",
-    "description": "Helper library to manage differents types of discounts and calculate the relational data",
+    "version": "1.0.0",
+    "description": "Helper library to manage different types of discounts and calculate the relational data",
     "type": "library",
     "license": "MIT",
     "authors": [
