@@ -1,0 +1,30 @@
+{
+    "name": "vgpastor/discounts-calculator",
+    "description": "Helper library to manage differents types of discounts and calculate the relational data",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Víctor García",
+            "email": "vgpastor08@gmail.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Vgpastor\\DiscountsCalculator\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Vgpastor\\DiscountsCalculator\\Tests\\": "tests/"
+        }
+    },
+    "require": {
+        "php": "^8.1"
+    },
+    "require-dev": {
+        "phpstan/phpstan": "^1.8",
+        "friendsofphp/php-cs-fixer": "^3.11",
+        "phpunit/phpunit": "^9.5"
+    }
+}
