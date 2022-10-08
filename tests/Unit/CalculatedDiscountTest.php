@@ -7,6 +7,8 @@ namespace Vgpastor\DiscountsCalculator\Model;
 use PHPUnit\Framework\TestCase;
 use Vgpastor\DiscountsCalculator\CalculatedDiscount;
 use Vgpastor\DiscountsCalculator\DiscountTypeEnum;
+use Vgpastor\DiscountsCalculator\Exceptions\DiscountBiggerThanBase;
+use Vgpastor\DiscountsCalculator\Exceptions\InvalidParameterException;
 
 class CalculatedDiscountTest extends TestCase
 {
@@ -29,7 +31,6 @@ class CalculatedDiscountTest extends TestCase
         $this->assertEquals(0.0, $response->getDiscountSubtotal());
         $this->assertEquals(95.92, $response->getTaxSubtotal());
         $this->assertEquals(552.70, $response->getTotal());
-
     }
 
     final public function testCalculateDiscountBaseFixed(): void
@@ -83,6 +84,10 @@ class CalculatedDiscountTest extends TestCase
         $this->assertEquals(10.17, $response->getDiscountSubtotal());
     }
 
+    /**
+     * @throws InvalidParameterException
+     * @throws DiscountBiggerThanBase
+     */
     final public function testCalculateDiscountTotalPercentage(): void
     {
         $response = new CalculatedDiscount(
@@ -100,4 +105,90 @@ class CalculatedDiscountTest extends TestCase
         $this->assertEquals(56.18, $response->getDiscountSubtotal());
     }
 
+    final public function testExceptionInValues(): void
+    {
+        try {
+            new CalculatedDiscount(
+                DiscountTypeEnum::BASE_FIXED,
+                -1,
+                $this->discount,
+                $this->tax
+            );
+            $this->fail('Invalid parameter exception not thrown');
+        } catch (\Exception $e) {
+            $this->assertEquals('Invalid parameter: base', $e->getMessage());
+        }
+
+        try {
+            new CalculatedDiscount(
+                DiscountTypeEnum::BASE_FIXED,
+                $this->base,
+                -1,
+                $this->tax
+            );
+            $this->fail('Invalid parameter exception not thrown');
+        } catch (\Exception $e) {
+            $this->assertEquals('Invalid parameter: discount', $e->getMessage());
+        }
+        try {
+            new CalculatedDiscount(
+                DiscountTypeEnum::BASE_FIXED,
+                $this->base,
+                $this->discount,
+                -1
+            );
+            $this->fail('Invalid parameter exception not thrown');
+        } catch (\Exception $e) {
+            $this->assertEquals('Invalid parameter: tax', $e->getMessage());
+        }
+    }
+
+    public function testDiscountBiggerThanBase(): void
+    {
+        try {
+            new CalculatedDiscount(
+                DiscountTypeEnum::BASE_FIXED,
+                $this->base,
+                $this->base+1,
+                $this->tax
+            );
+            $this->fail('DiscountBiggerThanBase exception not thrown');
+        } catch (\Exception $e) {
+            $this->assertEquals('Discount it\'s bigger than base', $e->getMessage());
+        }
+        try {
+            new CalculatedDiscount(
+                DiscountTypeEnum::BASE_PERCENTAGE,
+                $this->base,
+                101,
+                $this->tax
+            );
+            $this->fail('DiscountBiggerThanBase exception not thrown');
+        } catch (\Exception $e) {
+            $this->assertEquals('Discount it\'s bigger than base', $e->getMessage());
+        }
+        try {
+            new CalculatedDiscount(
+                DiscountTypeEnum::TOTAL_PERCENTAGE,
+                $this->base,
+                101,
+                $this->tax
+            );
+            $this->fail('DiscountBiggerThanBase exception not thrown');
+        } catch (\Exception $e) {
+            $this->assertEquals('Discount it\'s bigger than base', $e->getMessage());
+        }
+        try {
+            new CalculatedDiscount(
+                DiscountTypeEnum::TOTAL_FIXED,
+                $this->base,
+                $this->base+($this->base*$this->tax/100+1),
+                $this->tax
+            );
+            $this->fail('DiscountBiggerThanBase exception not thrown');
+        } catch (\Exception $e) {
+            $this->assertEquals('Discount it\'s bigger than base', $e->getMessage());
+        }
+
+    }
 }

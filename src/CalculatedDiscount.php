@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace Vgpastor\DiscountsCalculator;
 
+use Vgpastor\DiscountsCalculator\Exceptions\DiscountBiggerThanBase;
+use Vgpastor\DiscountsCalculator\Exceptions\InvalidParameterException;
+
 final class CalculatedDiscount
 {
-    private int $precision = 2;
-    private int $roundingMode = PHP_ROUND_HALF_UP;
+    private int $precision;
+    private int $roundingMode;
 
     private float $base;
     private float $discount;
@@ -20,14 +23,37 @@ final class CalculatedDiscount
 
     private float $total;
 
+    /**
+     * @param DiscountTypeEnum $type Discount type to apply
+     * @param float $base The base amount used to calculate the discount.
+     * @param float $discount The discount amount or percentage.
+     * @param float $tax Optional tax percentage to apply.
+     * @param int $precision Optional precision to use in calculations.
+     * @param int $roundingMode Optional rounding mode to use in calculations.
+     * @throws InvalidParameterException
+     * @throws DiscountBiggerThanBase
+     */
     public function __construct(
         DiscountTypeEnum $type,
-        float $base,
-        float $discount,
-        float $tax = 0.0,
-        int $precision = 2,
-        int $roundingMode = PHP_ROUND_HALF_UP
+        float            $base,
+        float            $discount,
+        float            $tax = 0.0,
+        int              $precision = 2,
+        int              $roundingMode = PHP_ROUND_HALF_UP
     ) {
+        if ($base < 0) {
+            throw new Exceptions\InvalidParameterException('base');
+        }
+        if ($discount < 0) {
+            throw new Exceptions\InvalidParameterException('discount');
+        }
+        if ($tax < 0) {
+            throw new Exceptions\InvalidParameterException('tax');
+        }
+        if ($discount > $base && $type === DiscountTypeEnum::BASE_FIXED) {
+            throw new Exceptions\DiscountBiggerThanBase();
+        }
+
         $this->type = $type;
         $this->base = $base;
         $this->discount = $discount;
@@ -37,6 +63,10 @@ final class CalculatedDiscount
         $this->roundingMode = $roundingMode;
 
         $this->calculate();
+
+        if ($this->discountSubtotal > $this->base) {
+            throw new Exceptions\DiscountBiggerThanBase();
+        }
     }
 
     private function calculate(): void
@@ -47,17 +77,8 @@ final class CalculatedDiscount
                 $this->calculateDiscountInBase();
                 break;
             case DiscountTypeEnum::TOTAL_FIXED:
-                $this->total = round($this->base+$this->percentageCalculation($this->base, $this->tax) - $this->discount, 2);
-                $this->taxSubtotal = round($this->total * $this->tax / (100 + $this->tax), 2);
-                $this->baseSubtotal = round($this->total - $this->taxSubtotal, 2);
-                $this->discountSubtotal = round($this->base - $this->baseSubtotal, 2);
-                break;
             case DiscountTypeEnum::TOTAL_PERCENTAGE:
-                $pretotal = $this->base*(1+$this->tax/100);
-                $this->total = round($pretotal - $this->percentageCalculation($pretotal, $this->discount), 2);
-                $this->taxSubtotal = round($this->total * $this->tax / (100 + $this->tax), 2);
-                $this->baseSubtotal = round($this->total - $this->taxSubtotal, 2);
-                $this->discountSubtotal = round($this->base - $this->baseSubtotal, 2);
+                $this->calculateDiscountInTotal();
                 break;
         }
     }
@@ -72,6 +93,19 @@ final class CalculatedDiscount
         $this->discountSubtotal = round($this->base - $this->baseSubtotal, $this->precision, $this->roundingMode);
         $this->taxSubtotal = round($this->percentageCalculation($this->baseSubtotal, $this->tax), $this->precision, $this->roundingMode);
         $this->total = round($this->baseSubtotal + $this->taxSubtotal, $this->precision, $this->roundingMode);
+    }
+
+    private function calculateDiscountInTotal(): void
+    {
+        if ($this->type === DiscountTypeEnum::TOTAL_PERCENTAGE) {
+            $pretotal = $this->base * (1 + $this->tax / 100);
+            $this->total = round($pretotal - $this->percentageCalculation($pretotal, $this->discount), $this->precision, $this->roundingMode);
+        } else {
+            $this->total = round($this->base + $this->percentageCalculation($this->base, $this->tax) - $this->discount, $this->precision, $this->roundingMode);
+        }
+        $this->taxSubtotal = round($this->total * $this->tax / (100 + $this->tax), $this->precision, $this->roundingMode);
+        $this->baseSubtotal = round($this->total - $this->taxSubtotal, $this->precision, $this->roundingMode);
+        $this->discountSubtotal = round($this->base - $this->baseSubtotal, $this->precision, $this->roundingMode);
     }
 
     private function percentageCalculation(float $value, float $percentage): float
